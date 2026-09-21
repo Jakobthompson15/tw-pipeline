@@ -154,9 +154,11 @@ VIEWS["orders"] = f"""
 -- One row per order (all sales platforms) with refunds and pixel first/last click.
 WITH refunds AS (
   SELECT order_id,
-    SUM(total_refunded_price) AS refunded_amount,
-    SUM(total_refunded_tax) AS refunded_tax,
-    SUM(total_refunded_shipping) AS refunded_shipping,
+    -- Triple Whale signs refunds negative for Shopify/Amazon and positive for
+    -- TikTok Shop; report them as positive amounts.
+    SUM(ABS(total_refunded_price)) AS refunded_amount,
+    SUM(ABS(total_refunded_tax)) AS refunded_tax,
+    SUM(ABS(total_refunded_shipping)) AS refunded_shipping,
     COUNT(*) AS refund_count,
     MIN(processed_at) AS first_refund_at
   FROM {STG}.refunds

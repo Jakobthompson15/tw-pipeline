@@ -62,7 +62,14 @@ Health: `SELECT * FROM triple_whale_curated.pipeline_status ORDER BY days_behind
   10 MiB / 50k rows. The job splits by date, then by hash bucket, on "too big".
 * `cityHash64(*)` returns NULL if any column is NULL — bucket on key columns.
 * `count()` on some views (e.g. `ads_table`, hourly) is lower than the rows
-  `SELECT *` returns; use `count()` over a `SELECT *` subquery to compare.
+  `SELECT *` returns, and even `count()` over a `SELECT *` subquery can differ
+  (the optimizer prunes columns, which changes how views aggregate). The raw
+  tables hold exactly what `SELECT *` returns.
+* `email_sms_table` has rows that repeat exactly; that is Triple Whale's grain
+  (summing `recipients` matches Triple Whale's own `sum()`). `*_unique` metrics
+  (opens, clicks) are de-duplicated by Triple Whale and must not be summed.
+* Refund amounts are negative for Shopify/Amazon and positive for TikTok Shop;
+  `curated.orders` normalizes them to positive.
 * The SQL endpoint has sent `Retry-After: ~93000`; waits are capped at 120s.
 * The API key belongs to a person's Triple Whale login; if their access goes,
   the sync stops. Rotate with `gcloud secrets versions add triple-whale-api-key`.
