@@ -19,6 +19,7 @@ Sundays, otherwise an upsert of customers created or ordering in the lookback.
 
 import argparse
 import datetime as dt
+import http.client
 import json
 import logging
 import math
@@ -185,8 +186,10 @@ class TripleWhale:
                     time.sleep(wait)
                     continue
                 raise RuntimeError(f"{path} HTTP {e.code}: {text}") from None
-            except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
-                log.warning("%s network error, retrying: %s", path, e)
+            except (OSError, http.client.HTTPException) as e:
+                # URLError, timeouts, resets, and responses cut off mid-body
+                # (http.client.IncompleteRead) are all transient.
+                log.warning("%s network error, retrying: %r", path, e)
                 time.sleep(min(2 ** attempt, 60))
         raise RuntimeError(f"{path}: gave up after {tries} attempts")
 
