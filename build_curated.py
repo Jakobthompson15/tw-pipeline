@@ -87,6 +87,8 @@ VIEWS = {}
 VIEWS["daily_kpis"] = f"""
 -- One row per day with Triple Whale's own Summary Page KPIs.
 -- The current day is partial until the next daily run re-pulls it.
+-- blended_ad_spend is Triple Whale's "Blended Ad Spend", which excludes Amazon Ads
+-- (amazon_ads_spend); per-channel spend reconciles with marketing_performance_daily.
 SELECT
   event_date AS date,
 {",\n".join(f"  MAX(IF(metric_id = '{m}', value, NULL)) AS {c}" for m, c in KPIS.items())}

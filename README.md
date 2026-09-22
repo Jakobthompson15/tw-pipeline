@@ -14,8 +14,11 @@ BigQuery project `triplewhale-508216` every day at 06:00 America/Chicago.
 Staging and curated are *authorized datasets* on the layer below, so people can be
 given read access to curated without access to raw.
 
-`daily_kpis` comes from Triple Whale's Summary Page, so net profit, ROAS, MER,
-NCPA etc. match the Triple Whale dashboard exactly.
+`daily_kpis` comes from Triple Whale's Summary Page (net profit, ROAS, MER, NCPA...).
+Checked: every channel's spend in `daily_kpis` equals `marketing_performance_daily`
+(Jan 2025 to Sep 2026), and daily order revenue equals the Shopify orders total.
+Triple Whale's "Blended Ad Spend" excludes Amazon Ads, so `blended_ad_spend` is
+lower than total channel spend by `amazon_ads_spend`.
 
 ## Sources
 
