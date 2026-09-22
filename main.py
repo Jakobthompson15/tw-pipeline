@@ -13,7 +13,8 @@ columns belong in triple_whale_staging.
 
 Dated tables are replaced window by window (DELETE range + INSERT in one
 transaction), so re-running any range is idempotent. Snapshot tables (no
-event_date) are fully replaced on every run.
+event_date) are fully replaced on every run, except customers_table: full on
+Sundays, otherwise an upsert of customers created or ordering in the lookback.
 """
 
 import argparse
@@ -96,7 +97,7 @@ DATED = {
     "social_media_pages_table": {},
 }
 
-# Tables without event_date: full snapshot every run.
+# Tables without event_date: full snapshot every run (see INCREMENTAL_SNAPSHOTS).
 SNAPSHOT = [
     "customers_table",
     "products_table",
@@ -233,11 +234,20 @@ class Sink:
         self.file.close()
         self.file, self.loaded = None, True
 
-    def commit(self, start=None, end=None):
-        """Replace [start, end] (dated) or the whole table (snapshot) with the collected rows."""
+    def commit(self, start=None, end=None, key=None):
+        """Replace [start, end] (dated), the rows sharing `key` with the new ones (upsert),
+        or the whole table (snapshot) with the collected rows."""
         self._flush()
         ensure_table(self.bq, self.table, self.dated)
-        where = (f"event_date BETWEEN DATE '{start}' AND DATE '{end}'" if self.dated else "TRUE")
+        if key and not self.loaded:
+            return 0  # upsert with nothing new: leave the table alone
+        if key:
+            where = (f"LAX_STRING(data.{key}) IN "
+                     f"(SELECT LAX_STRING(data.{key}) FROM `{self.load}`)")
+        elif self.dated:
+            where = f"event_date BETWEEN DATE '{start}' AND DATE '{end}'"
+        else:
+            where = "TRUE"
         insert = f"INSERT INTO `{self.target}` SELECT * FROM `{self.load}`;" if self.loaded else ""
         self.bq.query(f"""
             BEGIN TRANSACTION;
@@ -426,19 +436,39 @@ def plan_chunks(per_day, w0, w1, rpc):
         yield run_start, prev, 1
 
 
-def sync_snapshot(tw, bq, table, run_id):
+# Snapshots too big to re-pull daily: fully refreshed on FULL_REFRESH_WEEKDAY (and on
+# --backfill); other days only rows matching `changed` over the lookback window are
+# pulled and upserted on `key`.
+INCREMENTAL_SNAPSHOTS = {
+    "customers_table": {
+        "key": "customer_id",
+        "changed": "(toDate(created_at) >= toDate(@startDate) OR customer_id IN "
+                   "(SELECT customer_id FROM orders_table "
+                   "WHERE event_date BETWEEN @startDate AND @endDate))",
+    },
+}
+FULL_REFRESH_WEEKDAY = int(os.environ.get("FULL_REFRESH_WEEKDAY", "6"))  # Sunday
+
+
+def sync_snapshot(tw, bq, table, run_id, since=None, until=None):
+    """Full snapshot, or, when `since` is given for an incremental table, an upsert of
+    the rows changed between since and until."""
+    inc = INCREMENTAL_SNAPSHOTS.get(table) if since else None
+    extra = inc["changed"] if inc else None
+    start, end = (since, until) if inc else (dt.date(2015, 1, 1), dt.date(2015, 1, 1))
     rpc, key = sample_table(tw, table, False)
     try:
-        n = int(tw.sql(f"SELECT count() AS n FROM {table}")[0]["n"])
+        where = f" WHERE {extra}" if extra else ""
+        n = int(tw.sql(f"SELECT count() AS n FROM {table}{where}", start, end)[0]["n"])
     except Exception:
         n = rpc
     k = max(1, math.ceil(n / rpc)) if key else 1
     sink = Sink(bq, table, run_id, dated=False)
     for i in range(k):
-        fetch(tw, table, dt.date(2015, 1, 1), dt.date(2015, 1, 1), None, (k, i), False, key,
+        fetch(tw, table, start, end, extra, (k, i), False, key,
               lambda r: sink.add(None, scrub(r), r.get("shop_id") or SHOP))
-    total = sink.commit()
-    log.info("DONE %s snapshot rows=%s", table, total)
+    total = sink.commit(key=inc["key"] if inc else None)
+    log.info("DONE %s %s rows=%s", table, f"upsert since {since}" if inc else "snapshot", total)
     return total
 
 
@@ -611,7 +641,10 @@ def main():
                      else daily_start)
             guarded(name, sync_dated, tw, bq, name, cfg, start, today, run_id)
         else:
-            guarded(name, sync_snapshot, tw, bq, name, run_id)
+            incremental = (not args.backfill and name in INCREMENTAL_SNAPSHOTS
+                           and today.weekday() != FULL_REFRESH_WEEKDAY)
+            guarded(name, sync_snapshot, tw, bq, name, run_id,
+                    daily_start if incremental else None, today)
 
     def journeys_job():
         start = daily_start if not args.backfill or args.start else journeys_first_date(tw, today)
