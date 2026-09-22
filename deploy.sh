@@ -25,9 +25,9 @@ echo "deployed $IMG@$DIGEST"
 # One-time setup already done (kept for reference):
 #   gcloud artifacts repositories create tw-pipeline --repository-format=docker --location=$REGION
 #   gcloud iam service-accounts create tw-scheduler
-#   gcloud projects add-iam-policy-binding $PROJECT \
-#     --member=serviceAccount:tw-scheduler@$PROJECT.iam.gserviceaccount.com --role=roles/run.invoker \
-#     --condition='expression=resource.name == "projects/'$PROJECT'/locations/'$REGION'/jobs/tw-sync",title=only-tw-sync-job'
+#   gcloud projects add-iam-policy-binding $PROJECT --condition=None \
+#     --member=serviceAccount:tw-scheduler@$PROJECT.iam.gserviceaccount.com --role=roles/run.invoker
+#   (IAM conditions on the job name gave Scheduler 403s.)
 #   gcloud scheduler jobs create http tw-sync-daily --location=$REGION --schedule="0 6 * * *" \
 #     --time-zone=America/Chicago --http-method=POST \
 #     --uri=https://run.googleapis.com/v2/projects/$PROJECT/locations/$REGION/jobs/tw-sync:run \

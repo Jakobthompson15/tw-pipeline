@@ -520,9 +520,11 @@ def sync_summary(tw, bq, start, end, run_id):
     sink = Sink(bq, table, run_id, dated=True)
     total, d, w0 = 0, start, start
     while d <= end:
+        # Date-only strings are read as midnight UTC, which returns the *previous*
+        # shop day; send shop-local timestamps with the offset instead.
+        a, b = day_bounds(d)
         r = tw.post("summary-page/get-data",
-                    {"shopDomain": SHOP, "period": {"start": d.isoformat(), "end": d.isoformat()},
-                     "todayHour": 25})
+                    {"shopDomain": SHOP, "period": {"start": a, "end": b}, "todayHour": 25})
         for m in r.get("metrics") or []:
             # Drop the comparison-period fields; that day is stored on its own row anyway.
             m = {k: v for k, v in m.items() if k not in ("delta",)}

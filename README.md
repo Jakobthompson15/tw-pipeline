@@ -53,8 +53,10 @@ Health: `SELECT * FROM triple_whale_curated.pipeline_status ORDER BY days_behind
 
 * `tw-pipeline@` runs the job: BigQuery `dataEditor` on `triple_whale_raw` only,
   `jobUser` on the project, `secretAccessor` on `triple-whale-api-key` only.
-* `tw-scheduler@` is Cloud Scheduler's identity: `run.invoker` limited by IAM
-  condition to the `tw-sync` job.
+* `tw-scheduler@` is Cloud Scheduler's identity: project-level `run.invoker`.
+  `tw-sync` is the only Cloud Run resource in the project. (An IAM condition on
+  the job name was tried and made Scheduler get 403; a job-level binding needs
+  `run.jobs.setIamPolicy`, which a project admin can do instead.)
 
 ## Triple Whale API gotchas
 
@@ -71,5 +73,7 @@ Health: `SELECT * FROM triple_whale_curated.pipeline_status ORDER BY days_behind
 * Refund amounts are negative for Shopify/Amazon and positive for TikTok Shop;
   `curated.orders` normalizes them to positive.
 * The SQL endpoint has sent `Retry-After: ~93000`; waits are capped at 120s.
+* The Summary Page endpoint reads date-only `start`/`end` as midnight UTC and
+  returns the *previous* shop day; the job sends shop-local timestamps.
 * The API key belongs to a person's Triple Whale login; if their access goes,
   the sync stops. Rotate with `gcloud secrets versions add triple-whale-api-key`.
