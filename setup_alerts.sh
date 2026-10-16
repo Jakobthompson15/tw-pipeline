@@ -4,7 +4,7 @@
 #   ./setup_alerts.sh you@example.com
 set -euo pipefail
 
-PROJECT=triplewhale-508216
+PROJECT=${PROJECT:-bgzdata}
 EMAIL=${1:?usage: ./setup_alerts.sh <email>}
 
 CHANNEL=$(gcloud beta monitoring channels list --project=$PROJECT \

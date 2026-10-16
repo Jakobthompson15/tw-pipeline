@@ -8,10 +8,11 @@ come straight from the Summary Page so they match the Triple Whale dashboard.
 """
 
 import argparse
+import os
 
 from google.cloud import bigquery
 
-PROJECT = "triplewhale-508216"
+PROJECT = os.environ.get("PROJECT", "bgzdata")
 STG = f"`{PROJECT}.triple_whale_staging`"
 CUR = f"{PROJECT}.triple_whale_curated"
 

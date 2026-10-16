@@ -15,12 +15,13 @@ Re-run after Triple Whale adds fields; the views are cheap to replace.
 """
 
 import argparse
+import os
 import re
 from concurrent.futures import ThreadPoolExecutor
 
 from google.cloud import bigquery
 
-PROJECT = "triplewhale-508216"
+PROJECT = os.environ.get("PROJECT", "bgzdata")
 RAW, STG = "triple_whale_raw", "triple_whale_staging"
 SAMPLE_ROWS = 20_000
 

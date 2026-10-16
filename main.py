@@ -37,7 +37,7 @@ from zoneinfo import ZoneInfo
 
 from google.cloud import bigquery, secretmanager
 
-PROJECT = os.environ.get("GCP_PROJECT", "triplewhale-508216")
+PROJECT = os.environ.get("GCP_PROJECT", "bgzdata")
 DATASET = os.environ.get("BQ_DATASET", "triple_whale_raw")
 SHOP = os.environ.get("TW_SHOP", "xjfdku-0t.myshopify.com")
 SHOP_TZ = ZoneInfo(os.environ.get("TW_SHOP_TZ", "America/Chicago"))

@@ -9,7 +9,7 @@
 # listed under "roles" below already granted to you. See SETUP.md for the why.
 set -euo pipefail
 
-PROJECT=${PROJECT:-triplewhale-508216}
+PROJECT=${PROJECT:-bgzdata}
 REGION=${REGION:-us-central1}
 BILLING=${BILLING:-014263-F7E3CB-3A07B2}
 OPERATOR=${OPERATOR:-$(gcloud config get-value account 2>/dev/null)}
