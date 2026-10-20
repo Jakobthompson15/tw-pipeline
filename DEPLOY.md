@@ -27,7 +27,7 @@ variables**, so if Cloud Shell disconnects, run this block again:
 ```bash
 # Skip the clone if ~/tw-pipeline already exists.
 gh auth login          # once; choose GitHub.com > HTTPS > login with a web browser
-gh repo clone <OWNER>/tw-pipeline ~/tw-pipeline
+gh repo clone Jakobthompson15/tw-pipeline ~/tw-pipeline
 cd ~/tw-pipeline && git fetch && git switch bgzdata && git pull
 
 export PROJECT=bgzdata
